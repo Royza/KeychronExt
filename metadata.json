@@ -1,0 +1,7 @@
+{
+  "uuid": "keychron-k5-pro@local",
+  "name": "Keychron K5 Pro Controls",
+  "description": "Panel controls and shortcut reference for Keychron K5 Pro keyboards on GNOME.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 1
+}

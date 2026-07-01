@@ -1,0 +1,3 @@
+*.shell-extension.zip
+*.backup.*
+__pycache__/
