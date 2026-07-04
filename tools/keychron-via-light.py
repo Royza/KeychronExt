@@ -13,8 +13,14 @@ ID_UNHANDLED = 0xFF
 RGB_MATRIX_CHANNEL = 0x03
 RGB_MATRIX_BRIGHTNESS = 0x01
 RGB_MATRIX_EFFECT = 0x02
+RGB_MATRIX_EFFECT_SPEED = 0x03
+RGB_MATRIX_COLOR = 0x04
 DEFAULT_RESTORE_BRIGHTNESS = 0xAF
 DEFAULT_RESTORE_EFFECT = 0x01
+EFFECT_MIN = 0
+EFFECT_MAX = 22
+VALUE_MIN = 0
+VALUE_MAX = 255
 
 
 def transfer(path, payload):
@@ -63,6 +69,17 @@ def get_effect(path):
     return get_value(path, RGB_MATRIX_EFFECT, "effect")
 
 
+def get_effect_speed(path):
+    return get_value(path, RGB_MATRIX_EFFECT_SPEED, "effect speed")
+
+
+def get_color(path):
+    response = transfer(path, [ID_CUSTOM_GET_VALUE, RGB_MATRIX_CHANNEL, RGB_MATRIX_COLOR])
+    if response[0] == ID_UNHANDLED:
+        raise SystemExit("Keyboard firmware did not handle VIA rgb_matrix color.")
+    return response[3], response[4]
+
+
 def get_value(path, value_id, label):
     response = transfer(path, [ID_CUSTOM_GET_VALUE, RGB_MATRIX_CHANNEL, value_id])
     if response[0] == ID_UNHANDLED:
@@ -75,15 +92,32 @@ def set_brightness(path, value):
 
 
 def set_effect(path, value):
-    return set_value(path, RGB_MATRIX_EFFECT, value, "effect")
+    return set_value(path, RGB_MATRIX_EFFECT, clamp(value, EFFECT_MIN, EFFECT_MAX), "effect")
+
+
+def set_effect_speed(path, value):
+    return set_value(path, RGB_MATRIX_EFFECT_SPEED, value, "effect speed")
+
+
+def set_color(path, hue, saturation):
+    hue = clamp(hue, VALUE_MIN, VALUE_MAX)
+    saturation = clamp(saturation, VALUE_MIN, VALUE_MAX)
+    response = transfer(path, [ID_CUSTOM_SET_VALUE, RGB_MATRIX_CHANNEL, RGB_MATRIX_COLOR, hue, saturation])
+    if response[0] == ID_UNHANDLED:
+        raise SystemExit("Keyboard firmware rejected VIA rgb_matrix color.")
+    return hue, saturation
 
 
 def set_value(path, value_id, value, label):
-    value = max(0, min(255, int(value)))
+    value = clamp(value, VALUE_MIN, VALUE_MAX)
     response = transfer(path, [ID_CUSTOM_SET_VALUE, RGB_MATRIX_CHANNEL, value_id, value])
     if response[0] == ID_UNHANDLED:
         raise SystemExit(f"Keyboard firmware rejected VIA rgb_matrix {label}.")
     return value
+
+
+def clamp(value, lower, upper):
+    return max(lower, min(upper, int(value)))
 
 
 def save_state(path):
@@ -141,12 +175,27 @@ def toggle(path):
         print("on")
 
 
+def print_state(path):
+    hue, saturation = get_color(path)
+    print(
+        f"brightness={get_brightness(path)} "
+        f"effect={get_effect(path)} "
+        f"speed={get_effect_speed(path)} "
+        f"hue={hue} "
+        f"saturation={saturation}"
+    )
+
+
+def adjust(current, delta, lower=VALUE_MIN, upper=VALUE_MAX):
+    return clamp(current + int(delta), lower, upper)
+
+
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "toggle"
     path = find_raw_hid()
 
     if command == "get":
-        print(f"brightness={get_brightness(path)} effect={get_effect(path)}")
+        print_state(path)
     elif command == "toggle":
         toggle(path)
     elif command == "save":
@@ -154,8 +203,31 @@ def main():
         print("saved")
     elif command == "set" and len(sys.argv) == 3:
         print(set_brightness(path, int(sys.argv[2], 0)))
+    elif command == "set-effect" and len(sys.argv) == 3:
+        print(set_effect(path, int(sys.argv[2], 0)))
+    elif command == "effect" and len(sys.argv) == 3:
+        print(set_effect(path, adjust(get_effect(path), int(sys.argv[2], 0), EFFECT_MIN, EFFECT_MAX)))
+    elif command == "set-speed" and len(sys.argv) == 3:
+        print(set_effect_speed(path, int(sys.argv[2], 0)))
+    elif command == "speed" and len(sys.argv) == 3:
+        print(set_effect_speed(path, adjust(get_effect_speed(path), int(sys.argv[2], 0))))
+    elif command == "set-color" and len(sys.argv) == 4:
+        hue, saturation = set_color(path, int(sys.argv[2], 0), int(sys.argv[3], 0))
+        print(f"hue={hue} saturation={saturation}")
+    elif command == "hue" and len(sys.argv) == 3:
+        hue, saturation = get_color(path)
+        hue, saturation = set_color(path, adjust(hue, int(sys.argv[2], 0)), saturation)
+        print(f"hue={hue} saturation={saturation}")
+    elif command == "saturation" and len(sys.argv) == 3:
+        hue, saturation = get_color(path)
+        hue, saturation = set_color(path, hue, adjust(saturation, int(sys.argv[2], 0)))
+        print(f"hue={hue} saturation={saturation}")
     else:
-        raise SystemExit("Usage: keychron-via-light.py [get|toggle|save|set VALUE]")
+        raise SystemExit(
+            "Usage: keychron-via-light.py "
+            "[get|toggle|save|set VALUE|set-effect VALUE|effect DELTA|"
+            "set-speed VALUE|speed DELTA|set-color HUE SATURATION|hue DELTA|saturation DELTA]"
+        )
 
 
 if __name__ == "__main__":

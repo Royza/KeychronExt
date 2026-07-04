@@ -16,9 +16,21 @@ Most `fn` combinations on Keychron keyboards are handled inside the keyboard fir
 
 The Keychron K5 Pro keyboard backlight and RGB effects are handled by keyboard firmware in this setup. GNOME exposes a keyboard-backlight D-Bus interface, but it does not provide working brightness properties for this Keychron and no Keychron backlight LED appears under `/sys/class/leds`.
 
-The extension keeps firmware-only backlight shortcuts as reference items. The one exception is `Backlight Off / On`, which uses the K5 Pro's VIA raw-HID lighting interface when the keyboard is connected over USB.
+The extension keeps firmware-only backlight shortcuts as reference items when they are not exposed through VIA. The direct RGB controls use the K5 Pro's VIA raw-HID lighting interface when the keyboard is connected over USB.
 
-On this K5 Pro, `fn+Light key` toggles the keyboard backlight off/on in firmware. The extension's `Backlight Off / On` row uses the keyboard's VIA raw-HID interface in wired mode and toggles RGB matrix state by restoring both brightness and effect mode. This matters because the keyboard can report a nonzero effect mode while brightness is `0`, especially after first load or a manual firmware toggle. `fn+F5/F6` appear to change backlight patterns/effects rather than exposing OS-controllable brightness.
+On this K5 Pro, `fn+Light key` toggles the keyboard backlight off/on in firmware. The extension's `Backlight Off / On` row uses the keyboard's VIA raw-HID interface in wired mode and toggles RGB matrix state by restoring both brightness and effect mode. This matters because the keyboard can report a nonzero effect mode while brightness is `0`, especially after first load or a manual firmware toggle.
+
+The extension can also control these VIA RGB Matrix values directly:
+
+- Brightness down/up
+- Previous/next effect
+- Direct effect selection
+- Effect speed down/up
+- Hue down/up
+- Saturation down/up
+- Save lighting settings
+
+The menu disables endpoint-sensitive rows when the keyboard reports that brightness, effect, speed, or saturation is already at its minimum or maximum. The firmware-only `Lock Backlight Effect` shortcut remains a disabled reference item.
 
 ## Install
 

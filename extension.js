@@ -16,10 +16,43 @@ const UUID = 'keychron-k5-pro@local';
 const BATTERY_REFRESH_SECONDS = 600;
 const SOFTWARE_DIM_STEP = 16;
 const SOFTWARE_DIM_MAX = 120;
+const RGB_VALUE_MIN = 0;
+const RGB_VALUE_MAX = 255;
+const RGB_EFFECT_MIN = 0;
+const RGB_EFFECT_MAX = 22;
+const RGB_BRIGHTNESS_STEP = 16;
+const RGB_SPEED_STEP = 16;
+const RGB_COLOR_STEP = 16;
 const SHELL_BRIGHTNESS_BINDING_DEFAULTS = {
     'screen-brightness-down': ['XF86MonBrightnessDown'],
     'screen-brightness-up': ['XF86MonBrightnessUp'],
 };
+
+const RGB_EFFECTS = [
+    'None',
+    'Solid Color',
+    'Breathing',
+    'Band Spiral Value',
+    'Cycle All',
+    'Cycle Left / Right',
+    'Cycle Up / Down',
+    'Rainbow Moving Chevron',
+    'Cycle Out / In',
+    'Cycle Out / In Dual',
+    'Cycle Pinwheel',
+    'Cycle Spiral',
+    'Dual Beacon',
+    'Rainbow Beacon',
+    'Jellybean Raindrops',
+    'Pixel Rain',
+    'Typing Heatmap',
+    'Digital Rain',
+    'Reactive Simple',
+    'Reactive Multiwide',
+    'Reactive Multinexus',
+    'Splash',
+    'Solid Splash',
+];
 
 const UPowerIface = `<node>
   <interface name="org.freedesktop.UPower">
@@ -86,15 +119,7 @@ class KeychronIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(this._statusItem);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this._addSection('Keyboard Backlight / RGB', [
-            ['Backlight Off / On', 'VIA rgb_matrix brightness', ActionKind.CALLBACK, () => this._extension.toggleKeyboardBacklight()],
-            ['Backlight Pattern / Effect', 'fn + F5 (observed firmware)', ActionKind.FIRMWARE],
-            ['Backlight Pattern / Effect', 'fn + F6 (observed firmware)', ActionKind.FIRMWARE],
-            ['RGB Speed Decrease', 'fn + - (firmware)', ActionKind.FIRMWARE],
-            ['RGB Speed Increase', 'fn + = (firmware)', ActionKind.FIRMWARE],
-            ['Change Backlight Color', 'fn + Left / Right (firmware)', ActionKind.FIRMWARE],
-            ['Lock Backlight Effect', 'fn + L + Light, hold 3s', ActionKind.FIRMWARE],
-        ]);
+        this._addRgbSection();
 
         this._addSection('Bluetooth', [
             ['Select Device 1', 'fn + 1 (BT firmware)', ActionKind.FIRMWARE, null, 'bluetoothOnly'],
@@ -137,22 +162,57 @@ class KeychronIndicator extends PanelMenu.Button {
 
         for (const row of rows) {
             const [label, shortcut, kind, payload = null, stateKey = null] = row;
-            const item = new PopupMenu.PopupMenuItem('');
-            if (kind === ActionKind.RESET)
-                item.add_style_class_name('keychron-danger');
-            item.remove_child(item.label);
-
-            const box = new St.BoxLayout({x_expand: true});
-            box.add_child(new St.Label({text: label, x_expand: true}));
-            box.add_child(new St.Label({text: shortcut, style_class: 'keychron-shortcut'}));
-            item.add_child(box);
-
-            item.connect('activate', () => this._extension.activateAction({label, shortcut, kind, payload}));
-            section.menu.addMenuItem(item);
-            this._items.push({item, kind, payload, stateKey, label});
+            this._addRow(section, label, shortcut, kind, payload, stateKey);
         }
 
         this.menu.addMenuItem(section);
+    }
+
+    _addRgbSection() {
+        const section = new PopupMenu.PopupSubMenuMenuItem('Keyboard Backlight / RGB');
+        section.add_style_class_name('keychron-submenu-title');
+
+        this._addRow(section, 'Backlight Off / On', 'VIA rgb_matrix toggle', ActionKind.CALLBACK, () => this._extension.toggleKeyboardBacklight(), 'viaRgb');
+        this._addRow(section, 'Brightness Down', 'VIA rgb_matrix brightness', ActionKind.CALLBACK, () => this._extension.adjustRgbBrightness(-RGB_BRIGHTNESS_STEP), 'rgbBrightnessDown');
+        this._addRow(section, 'Brightness Up', 'VIA rgb_matrix brightness', ActionKind.CALLBACK, () => this._extension.adjustRgbBrightness(RGB_BRIGHTNESS_STEP), 'rgbBrightnessUp');
+        this._addRow(section, 'Previous Effect', 'VIA rgb_matrix effect', ActionKind.CALLBACK, () => this._extension.adjustRgbEffect(-1), 'rgbEffectPrev');
+        this._addRow(section, 'Next Effect', 'VIA rgb_matrix effect', ActionKind.CALLBACK, () => this._extension.adjustRgbEffect(1), 'rgbEffectNext');
+
+        const effects = new PopupMenu.PopupSubMenuMenuItem('Select Effect');
+        effects.add_style_class_name('keychron-submenu-title');
+        for (let index = 0; index < RGB_EFFECTS.length; index++) {
+            const name = RGB_EFFECTS[index];
+            this._addRow(effects, name, `effect ${index}`, ActionKind.CALLBACK, () => this._extension.setRgbEffect(index), 'viaRgb');
+        }
+        section.menu.addMenuItem(effects);
+
+        this._addRow(section, 'Speed Down', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(-RGB_SPEED_STEP), 'rgbSpeedDown');
+        this._addRow(section, 'Speed Up', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(RGB_SPEED_STEP), 'rgbSpeedUp');
+        this._addRow(section, 'Hue Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(-RGB_COLOR_STEP), 'viaRgb');
+        this._addRow(section, 'Hue Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(RGB_COLOR_STEP), 'viaRgb');
+        this._addRow(section, 'Saturation Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbSaturation(-RGB_COLOR_STEP), 'rgbSaturationDown');
+        this._addRow(section, 'Saturation Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbSaturation(RGB_COLOR_STEP), 'rgbSaturationUp');
+        this._addRow(section, 'Save Lighting Settings', 'VIA rgb_matrix save', ActionKind.CALLBACK, () => this._extension.saveRgbLighting(), 'viaRgb');
+        this._addRow(section, 'Lock Backlight Effect', 'fn + L + Light, hold 3s', ActionKind.FIRMWARE);
+
+        this.menu.addMenuItem(section);
+    }
+
+    _addRow(section, label, shortcut, kind, payload = null, stateKey = null) {
+        const item = new PopupMenu.PopupMenuItem('');
+        if (kind === ActionKind.RESET)
+            item.add_style_class_name('keychron-danger');
+        item.remove_child(item.label);
+
+        const box = new St.BoxLayout({x_expand: true});
+        box.add_child(new St.Label({text: label, x_expand: true}));
+        box.add_child(new St.Label({text: shortcut, style_class: 'keychron-shortcut'}));
+        item.add_child(box);
+
+        item.connect('activate', () => this._extension.activateAction({label, shortcut, kind, payload}));
+        section.menu.addMenuItem(item);
+        this._items.push({item, kind, payload, stateKey, label});
+        return item;
     }
 
     syncState(state) {
@@ -161,6 +221,24 @@ class KeychronIndicator extends PanelMenu.Button {
 
             if (kind === ActionKind.FIRMWARE || kind === ActionKind.REFERENCE)
                 sensitive = false;
+            else if (stateKey === 'viaRgb')
+                sensitive = state.rgbAvailable;
+            else if (stateKey === 'rgbBrightnessDown')
+                sensitive = state.rgbAvailable && state.rgbBrightness !== RGB_VALUE_MIN;
+            else if (stateKey === 'rgbBrightnessUp')
+                sensitive = state.rgbAvailable && state.rgbBrightness !== RGB_VALUE_MAX;
+            else if (stateKey === 'rgbEffectPrev')
+                sensitive = state.rgbAvailable && state.rgbEffect !== RGB_EFFECT_MIN;
+            else if (stateKey === 'rgbEffectNext')
+                sensitive = state.rgbAvailable && state.rgbEffect !== RGB_EFFECT_MAX;
+            else if (stateKey === 'rgbSpeedDown')
+                sensitive = state.rgbAvailable && state.rgbSpeed !== RGB_VALUE_MIN;
+            else if (stateKey === 'rgbSpeedUp')
+                sensitive = state.rgbAvailable && state.rgbSpeed !== RGB_VALUE_MAX;
+            else if (stateKey === 'rgbSaturationDown')
+                sensitive = state.rgbAvailable && state.rgbSaturation !== RGB_VALUE_MIN;
+            else if (stateKey === 'rgbSaturationUp')
+                sensitive = state.rgbAvailable && state.rgbSaturation !== RGB_VALUE_MAX;
             else if (stateKey === 'bluetoothOnly')
                 sensitive = state.bluetoothMode;
             else if (kind === ActionKind.SCREEN_BRIGHTNESS && payload === 'up')
@@ -218,6 +296,12 @@ export default class KeychronK5ProExtension extends Extension {
             batteryPercent: null,
             batteryKnown: false,
             softwareDim: 0,
+            rgbAvailable: true,
+            rgbBrightness: null,
+            rgbEffect: null,
+            rgbSpeed: null,
+            rgbHue: null,
+            rgbSaturation: null,
         };
         this._softwareDimmer = null;
         this._stageCaptureId = null;
@@ -419,7 +503,32 @@ export default class KeychronK5ProExtension extends Extension {
 
     refreshState() {
         this.refreshBattery();
+        this.refreshRgbState();
         this._syncIndicator();
+    }
+
+    refreshRgbState() {
+        const helper = GLib.build_filenamev([this.path, 'tools', 'keychron-via-light.py']);
+
+        this._spawnText(['python3', helper, 'get'], (stdout, status) => {
+            if (!this._state)
+                return;
+
+            if (status !== 0) {
+                this._state.rgbAvailable = false;
+                this._syncIndicator();
+                return;
+            }
+
+            const state = this._parseKeyValueOutput(stdout);
+            this._state.rgbAvailable = true;
+            this._state.rgbBrightness = state.brightness ?? null;
+            this._state.rgbEffect = state.effect ?? null;
+            this._state.rgbSpeed = state.speed ?? null;
+            this._state.rgbHue = state.hue ?? null;
+            this._state.rgbSaturation = state.saturation ?? null;
+            this._syncIndicator();
+        });
     }
 
     refreshBattery() {
@@ -478,7 +587,68 @@ export default class KeychronK5ProExtension extends Extension {
                 Main.notify('Keychron K5 Pro', 'Keyboard backlight off.');
             else if (stdout === 'on')
                 Main.notify('Keychron K5 Pro', 'Keyboard backlight on.');
+            this.refreshRgbState();
         });
+    }
+
+    adjustRgbBrightness(delta) {
+        this._runLightingCommand(['set', this._boundedRgbValue(this._state.rgbBrightness, delta).toString()], 'Keyboard brightness updated.');
+    }
+
+    adjustRgbEffect(delta) {
+        this._runLightingCommand(['effect', delta.toString()], 'Keyboard effect updated.');
+    }
+
+    setRgbEffect(effect) {
+        const name = RGB_EFFECTS[effect] ?? `Effect ${effect}`;
+        this._runLightingCommand(['set-effect', effect.toString()], `Keyboard effect set to ${name}.`);
+    }
+
+    adjustRgbSpeed(delta) {
+        this._runLightingCommand(['speed', delta.toString()], 'Keyboard effect speed updated.');
+    }
+
+    adjustRgbHue(delta) {
+        this._runLightingCommand(['hue', delta.toString()], 'Keyboard color hue updated.');
+    }
+
+    adjustRgbSaturation(delta) {
+        this._runLightingCommand(['saturation', delta.toString()], 'Keyboard color saturation updated.');
+    }
+
+    saveRgbLighting() {
+        this._runLightingCommand(['save'], 'Keyboard lighting settings saved.');
+    }
+
+    _runLightingCommand(args, successMessage) {
+        const helper = GLib.build_filenamev([this.path, 'tools', 'keychron-via-light.py']);
+
+        this._spawnText(['python3', helper, ...args], (_stdout, status) => {
+            if (status !== 0) {
+                Main.notify('Keychron K5 Pro', 'Keyboard lighting command failed. VIA raw HID may only be available in wired mode.');
+                this.refreshRgbState();
+                return;
+            }
+
+            Main.notify('Keychron K5 Pro', successMessage);
+            this.refreshRgbState();
+        });
+    }
+
+    _boundedRgbValue(current, delta) {
+        const base = Number.isFinite(current) ? current : 0;
+        return Math.max(RGB_VALUE_MIN, Math.min(RGB_VALUE_MAX, base + delta));
+    }
+
+    _parseKeyValueOutput(stdout) {
+        const values = {};
+        for (const token of stdout.trim().split(/\s+/)) {
+            const [key, rawValue] = token.split('=');
+            const value = Number.parseInt(rawValue, 10);
+            if (key && Number.isFinite(value))
+                values[key] = value;
+        }
+        return values;
     }
 
     clearSoftwareDimmer() {
@@ -573,7 +743,7 @@ export default class KeychronK5ProExtension extends Extension {
             proc.communicate_utf8_async(null, null, (_proc, result) => {
                 try {
                     const [, stdout] = proc.communicate_utf8_finish(result);
-                    onExit(stdout.trim(), 0);
+                    onExit(stdout.trim(), proc.get_successful() ? 0 : proc.get_exit_status());
                 } catch (error) {
                     onExit('', proc.get_exit_status());
                 }
