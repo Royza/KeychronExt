@@ -24,7 +24,7 @@ The extension can also control these VIA RGB Matrix values directly:
 
 - Brightness down/up
 - Previous/next effect
-- Direct effect selection
+- Direct effect selection in the separate `RGB Effects` submenu
 - Effect speed down/up
 - Hue down/up
 - Saturation down/up

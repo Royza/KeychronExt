@@ -178,14 +178,6 @@ class KeychronIndicator extends PanelMenu.Button {
         this._addRow(section, 'Previous Effect', 'VIA rgb_matrix effect', ActionKind.CALLBACK, () => this._extension.adjustRgbEffect(-1), 'rgbEffectPrev');
         this._addRow(section, 'Next Effect', 'VIA rgb_matrix effect', ActionKind.CALLBACK, () => this._extension.adjustRgbEffect(1), 'rgbEffectNext');
 
-        const effects = new PopupMenu.PopupSubMenuMenuItem('Select Effect');
-        effects.add_style_class_name('keychron-submenu-title');
-        for (let index = 0; index < RGB_EFFECTS.length; index++) {
-            const name = RGB_EFFECTS[index];
-            this._addRow(effects, name, `effect ${index}`, ActionKind.CALLBACK, () => this._extension.setRgbEffect(index), 'viaRgb');
-        }
-        section.menu.addMenuItem(effects);
-
         this._addRow(section, 'Speed Down', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(-RGB_SPEED_STEP), 'rgbSpeedDown');
         this._addRow(section, 'Speed Up', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(RGB_SPEED_STEP), 'rgbSpeedUp');
         this._addRow(section, 'Hue Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(-RGB_COLOR_STEP), 'rgbColor');
@@ -194,6 +186,19 @@ class KeychronIndicator extends PanelMenu.Button {
         this._addRow(section, 'Saturation Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbSaturation(RGB_COLOR_STEP), 'rgbSaturationUp');
         this._addRow(section, 'Save Lighting Settings', 'VIA rgb_matrix save', ActionKind.CALLBACK, () => this._extension.saveRgbLighting(), 'viaRgb');
         this._addRow(section, 'Lock Backlight Effect', 'fn + L + Light, hold 3s', ActionKind.FIRMWARE);
+
+        this.menu.addMenuItem(section);
+        this._addRgbEffectsSection();
+    }
+
+    _addRgbEffectsSection() {
+        const section = new PopupMenu.PopupSubMenuMenuItem('RGB Effects');
+        section.add_style_class_name('keychron-submenu-title');
+
+        for (let index = 0; index < RGB_EFFECTS.length; index++) {
+            const name = RGB_EFFECTS[index];
+            this._addRow(section, name, `effect ${index}`, ActionKind.CALLBACK, () => this._extension.setRgbEffect(index), 'viaRgb');
+        }
 
         this.menu.addMenuItem(section);
     }

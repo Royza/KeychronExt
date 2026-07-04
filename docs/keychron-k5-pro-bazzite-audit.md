@@ -27,7 +27,7 @@ Extension menu handling:
 | Rewind / Play / Fast Forward | Enabled | These map to standard media actions through `playerctl`. |
 | Mute / Volume Down / Volume Up | Enabled | These map to standard PipeWire/WirePlumber actions through `wpctl`. |
 | Backlight Off / On | Enabled in wired mode | Uses VIA raw HID `rgb_matrix.brightness` and `rgb_matrix.effect` to toggle between off and the previous lighting state; physical `fn+Light key` is confirmed to toggle firmware backlight. |
-| RGB brightness, effect, speed, hue, saturation, and save | Enabled in wired mode | Uses VIA raw HID `rgb_matrix` values that this K5 Pro firmware handles directly. Brightness, speed, hue, and saturation are enabled only while an RGB effect is active; endpoint-sensitive rows are disabled at their reported minimum or maximum values. |
+| RGB brightness, effect, speed, hue, saturation, and save | Enabled in wired mode | Uses VIA raw HID `rgb_matrix` values that this K5 Pro firmware handles directly. Direct effect selection lives in a separate `RGB Effects` submenu because nested submenus do not display reliably in GNOME Shell popup menus. Brightness, speed, hue, and saturation are enabled only while an RGB effect is active; endpoint-sensitive rows are disabled at their reported minimum or maximum values. |
 | Lock Backlight Effect | Disabled reference | This remains a physical firmware shortcut and is not exposed as a VIA command. |
 | Bluetooth profile, pairing, battery-check, and auto-sleep shortcuts | Disabled reference | These are keyboard-firmware actions, not OS-triggerable commands. |
 | Clear Software Dimmer | Enabled only while dimmed | Removes the software dimmer immediately without requiring log out/in. |
