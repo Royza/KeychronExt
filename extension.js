@@ -188,8 +188,8 @@ class KeychronIndicator extends PanelMenu.Button {
 
         this._addRow(section, 'Speed Down', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(-RGB_SPEED_STEP), 'rgbSpeedDown');
         this._addRow(section, 'Speed Up', 'VIA rgb_matrix speed', ActionKind.CALLBACK, () => this._extension.adjustRgbSpeed(RGB_SPEED_STEP), 'rgbSpeedUp');
-        this._addRow(section, 'Hue Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(-RGB_COLOR_STEP), 'viaRgb');
-        this._addRow(section, 'Hue Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(RGB_COLOR_STEP), 'viaRgb');
+        this._addRow(section, 'Hue Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(-RGB_COLOR_STEP), 'rgbColor');
+        this._addRow(section, 'Hue Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbHue(RGB_COLOR_STEP), 'rgbColor');
         this._addRow(section, 'Saturation Down', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbSaturation(-RGB_COLOR_STEP), 'rgbSaturationDown');
         this._addRow(section, 'Saturation Up', 'VIA rgb_matrix color', ActionKind.CALLBACK, () => this._extension.adjustRgbSaturation(RGB_COLOR_STEP), 'rgbSaturationUp');
         this._addRow(section, 'Save Lighting Settings', 'VIA rgb_matrix save', ActionKind.CALLBACK, () => this._extension.saveRgbLighting(), 'viaRgb');
@@ -218,27 +218,30 @@ class KeychronIndicator extends PanelMenu.Button {
     syncState(state) {
         for (const {item, kind, payload, stateKey} of this._items) {
             let sensitive = true;
+            const rgbActive = state.rgbAvailable && state.rgbEffect !== RGB_EFFECT_MIN;
 
             if (kind === ActionKind.FIRMWARE || kind === ActionKind.REFERENCE)
                 sensitive = false;
             else if (stateKey === 'viaRgb')
                 sensitive = state.rgbAvailable;
             else if (stateKey === 'rgbBrightnessDown')
-                sensitive = state.rgbAvailable && state.rgbBrightness !== RGB_VALUE_MIN;
+                sensitive = rgbActive && state.rgbBrightness !== RGB_VALUE_MIN;
             else if (stateKey === 'rgbBrightnessUp')
-                sensitive = state.rgbAvailable && state.rgbBrightness !== RGB_VALUE_MAX;
+                sensitive = rgbActive && state.rgbBrightness !== RGB_VALUE_MAX;
             else if (stateKey === 'rgbEffectPrev')
                 sensitive = state.rgbAvailable && state.rgbEffect !== RGB_EFFECT_MIN;
             else if (stateKey === 'rgbEffectNext')
                 sensitive = state.rgbAvailable && state.rgbEffect !== RGB_EFFECT_MAX;
             else if (stateKey === 'rgbSpeedDown')
-                sensitive = state.rgbAvailable && state.rgbSpeed !== RGB_VALUE_MIN;
+                sensitive = rgbActive && state.rgbSpeed !== RGB_VALUE_MIN;
             else if (stateKey === 'rgbSpeedUp')
-                sensitive = state.rgbAvailable && state.rgbSpeed !== RGB_VALUE_MAX;
+                sensitive = rgbActive && state.rgbSpeed !== RGB_VALUE_MAX;
+            else if (stateKey === 'rgbColor')
+                sensitive = rgbActive;
             else if (stateKey === 'rgbSaturationDown')
-                sensitive = state.rgbAvailable && state.rgbSaturation !== RGB_VALUE_MIN;
+                sensitive = rgbActive && state.rgbSaturation !== RGB_VALUE_MIN;
             else if (stateKey === 'rgbSaturationUp')
-                sensitive = state.rgbAvailable && state.rgbSaturation !== RGB_VALUE_MAX;
+                sensitive = rgbActive && state.rgbSaturation !== RGB_VALUE_MAX;
             else if (stateKey === 'bluetoothOnly')
                 sensitive = state.bluetoothMode;
             else if (kind === ActionKind.SCREEN_BRIGHTNESS && payload === 'up')
@@ -296,7 +299,7 @@ export default class KeychronK5ProExtension extends Extension {
             batteryPercent: null,
             batteryKnown: false,
             softwareDim: 0,
-            rgbAvailable: true,
+            rgbAvailable: false,
             rgbBrightness: null,
             rgbEffect: null,
             rgbSpeed: null,
