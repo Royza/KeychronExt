@@ -620,7 +620,18 @@ export default class KeychronK5ProExtension extends Extension {
     }
 
     saveRgbLighting() {
-        this._runLightingCommand(['save'], 'Keyboard lighting settings saved.');
+        const helper = GLib.build_filenamev([this.path, 'tools', 'keychron-via-light.py']);
+
+        this._spawnText(['python3', helper, 'save'], (_stdout, status) => {
+            if (status !== 0) {
+                Main.notify('Keychron K5 Pro', 'Keyboard lighting save failed. VIA raw HID may only be available in wired mode.');
+                this.refreshRgbState();
+                return;
+            }
+
+            Main.notify('Keychron K5 Pro', 'Current RGB settings saved to keyboard firmware. No visible change is expected.');
+            this.refreshRgbState();
+        });
     }
 
     _runLightingCommand(args, successMessage) {

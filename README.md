@@ -30,7 +30,7 @@ The extension can also control these VIA RGB Matrix values directly:
 - Saturation down/up
 - Save lighting settings
 
-When the current effect is `None`, the keyboard treats lighting as off. In that state the menu keeps toggle/effect selection available and disables brightness, speed, hue, and saturation rows until a lighting effect is active. The menu also disables endpoint-sensitive rows when the keyboard reports that brightness, effect, speed, or saturation is already at its minimum or maximum. The firmware-only `Lock Backlight Effect` shortcut remains a disabled reference item.
+`Save Lighting Settings` persists the current RGB matrix settings in keyboard firmware and does not visibly change the lighting when clicked. When the current effect is `None`, the keyboard treats lighting as off. In that state the menu keeps toggle/effect selection available and disables brightness, speed, hue, and saturation rows until a lighting effect is active. The menu also disables endpoint-sensitive rows when the keyboard reports that brightness, effect, speed, or saturation is already at its minimum or maximum. The firmware-only `Lock Backlight Effect` shortcut remains a disabled reference item.
 
 ## Install
 
