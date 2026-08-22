@@ -138,19 +138,23 @@ function readReport(stream, cancellable) {
 
 export class HidController {
     constructor() {
-        this._active = true;
         this._transfers = new Set();
         this._queue = Promise.resolve();
+        this._transferTimeoutId = null;
         this._restoreBrightness = DEFAULT_BRIGHTNESS;
         this._restoreEffect = DEFAULT_EFFECT;
     }
 
     destroy() {
-        this._active = false;
+        if (this._transferTimeoutId) {
+            GLib.Source.remove(this._transferTimeoutId);
+            this._transferTimeoutId = null;
+        }
+
         for (const cancellable of this._transfers)
             cancellable.cancel();
-        this._transfers.clear();
-        this._queue = Promise.resolve();
+        this._transfers = null;
+        this._queue = null;
     }
 
     getState() {
@@ -255,7 +259,7 @@ export class HidController {
     }
 
     _enqueue(operation) {
-        if (!this._active)
+        if (!this._queue)
             return Promise.reject(new Error('Raw HID controller is disabled'));
 
         const pending = this._queue.then(operation, operation);
@@ -399,15 +403,23 @@ export class HidController {
 
         const cancellable = this._newCancellable();
         let ioStream = null;
-        let timeoutId = GLib.timeout_add(
+        let timedOut = false;
+
+        if (this._transferTimeoutId) {
+            GLib.Source.remove(this._transferTimeoutId);
+            this._transferTimeoutId = null;
+        }
+        const timeoutId = GLib.timeout_add_once(
             GLib.PRIORITY_DEFAULT,
             TRANSFER_TIMEOUT_MS,
             () => {
-                timeoutId = 0;
+                if (this._transferTimeoutId === timeoutId)
+                    this._transferTimeoutId = null;
+                timedOut = true;
                 cancellable.cancel();
-                return GLib.SOURCE_REMOVE;
             }
         );
+        this._transferTimeoutId = timeoutId;
 
         try {
             ioStream = await openReadWrite(Gio.File.new_for_path(path), cancellable);
@@ -417,12 +429,14 @@ export class HidController {
                 throw new Error(`Keyboard firmware rejected VIA RGB ${label}`);
             return response;
         } catch (error) {
-            if (isCancelled(error) && this._active)
+            if (isCancelled(error) && timedOut)
                 throw new Error(`VIA raw HID ${label} request timed out`);
             throw error;
         } finally {
-            if (timeoutId)
+            if (this._transferTimeoutId === timeoutId) {
                 GLib.Source.remove(timeoutId);
+                this._transferTimeoutId = null;
+            }
             ioStream?.close_async(GLib.PRIORITY_DEFAULT, null, null);
             this._releaseCancellable(cancellable);
         }
@@ -430,13 +444,15 @@ export class HidController {
 
     _newCancellable() {
         const cancellable = new Gio.Cancellable();
-        if (!this._active)
+        if (this._transfers)
+            this._transfers.add(cancellable);
+        else
             cancellable.cancel();
-        this._transfers.add(cancellable);
         return cancellable;
     }
 
     _releaseCancellable(cancellable) {
-        this._transfers.delete(cancellable);
+        if (this._transfers)
+            this._transfers.delete(cancellable);
     }
 }

@@ -442,7 +442,6 @@ export class KeyboardController {
     }
 
     enable() {
-        this._enabled = true;
         this._cancellable = new Gio.Cancellable();
         this._hid = new HidController();
         this._settings = this._extension.getSettings();
@@ -502,12 +501,6 @@ export class KeyboardController {
     }
 
     destroy() {
-        this._enabled = false;
-        this._batteryRequest++;
-        this._rgbRequest++;
-        this._cancellable.cancel();
-        this._hid.destroy();
-
         if (this._lightingSaveTimer) {
             GLib.Source.remove(this._lightingSaveTimer);
             this._lightingSaveTimer = null;
@@ -518,11 +511,19 @@ export class KeyboardController {
             this._batteryTimer = null;
         }
 
+        this._batteryRequest++;
+        this._rgbRequest++;
+        this._cancellable.cancel();
+        this._hid.destroy();
+
         this._releaseBrightnessKeys();
         if (this._monitorsChangedId) {
             Main.layoutManager.disconnect(this._monitorsChangedId);
             this._monitorsChangedId = null;
         }
+        for (const id of this._settingsSignalIds)
+            this._settings.disconnect(id);
+
         this._destroySoftwareDimmer();
 
         if (this._resetDialog) {
@@ -534,8 +535,6 @@ export class KeyboardController {
 
         this._indicator.destroy();
         this._mixerControl.close();
-        for (const id of this._settingsSignalIds)
-            this._settings.disconnect(id);
 
         this._indicator = null;
         this._mixerControl = null;
@@ -544,6 +543,7 @@ export class KeyboardController {
         this._settings = null;
         this._settingsSignalIds = null;
         this._state = null;
+        this._brightnessAccelerators = null;
         this._shellKeybindingSettings = null;
         this._savedShellBrightnessBindings = null;
         this._extension = null;
@@ -579,6 +579,7 @@ export class KeyboardController {
 
     async refreshBattery() {
         const request = ++this._batteryRequest;
+        const cancellable = this._cancellable;
         try {
             const result = await dbusCall(
                 Gio.DBus.system,
@@ -588,9 +589,9 @@ export class KeyboardController {
                 'GetManagedObjects',
                 null,
                 new GLib.VariantType('(a{oa{sa{sv}}})'),
-                this._cancellable
+                cancellable
             );
-            if (!this._enabled || request !== this._batteryRequest)
+            if (cancellable !== this._cancellable || request !== this._batteryRequest)
                 return;
 
             const [objects] = result.deepUnpack();
@@ -622,7 +623,9 @@ export class KeyboardController {
             this._state.batteryKnown = Number.isFinite(percent);
             this._syncIndicator();
         } catch (error) {
-            if (!isCancelled(error) && this._enabled) {
+            if (!isCancelled(error) &&
+                cancellable === this._cancellable &&
+                request === this._batteryRequest) {
                 this._state.bluetoothMode = false;
                 this._state.batteryPercent = null;
                 this._state.batteryKnown = false;
@@ -636,7 +639,7 @@ export class KeyboardController {
         const hid = this._hid;
         try {
             const state = await hid.getState();
-            if (!this._enabled || hid !== this._hid || request !== this._rgbRequest)
+            if (hid !== this._hid || request !== this._rgbRequest)
                 return;
 
             this._state.rgbAvailable = true;
@@ -650,7 +653,7 @@ export class KeyboardController {
             this._state.firmwareVersion = state.firmwareVersion;
             this._syncIndicator();
         } catch {
-            if (!this._enabled || hid !== this._hid || request !== this._rgbRequest)
+            if (hid !== this._hid || request !== this._rgbRequest)
                 return;
             this._state.rgbAvailable = false;
             this._syncIndicator();
@@ -658,6 +661,7 @@ export class KeyboardController {
     }
 
     async _sendMediaKey(method) {
+        const cancellable = this._cancellable;
         try {
             const result = await dbusCall(
                 Gio.DBus.session,
@@ -667,8 +671,10 @@ export class KeyboardController {
                 'ListNames',
                 null,
                 new GLib.VariantType('(as)'),
-                this._cancellable
+                cancellable
             );
+            if (cancellable !== this._cancellable)
+                return;
             const [names] = result.deepUnpack();
             const players = names.filter(name => name.startsWith('org.mpris.MediaPlayer2.'));
 
@@ -682,8 +688,10 @@ export class KeyboardController {
                         method,
                         null,
                         null,
-                        this._cancellable
+                        cancellable
                     );
+                    if (cancellable !== this._cancellable)
+                        return;
                     return;
                 } catch (error) {
                     if (isCancelled(error))
@@ -691,10 +699,10 @@ export class KeyboardController {
                 }
             }
 
-            if (this._enabled)
+            if (cancellable === this._cancellable)
                 Main.notify(APPLICATION_NAME, 'No compatible media player is running.');
         } catch (error) {
-            if (!isCancelled(error) && this._enabled)
+            if (!isCancelled(error) && cancellable === this._cancellable)
                 Main.notify(APPLICATION_NAME, 'The media command could not be sent.');
         }
     }
@@ -720,15 +728,16 @@ export class KeyboardController {
 
     openFileManager() {
         const uri = Gio.File.new_for_path(GLib.get_home_dir()).get_uri();
+        const cancellable = this._cancellable;
         Gio.AppInfo.launch_default_for_uri_async(
             uri,
             null,
-            this._cancellable,
+            cancellable,
             (_source, result) => {
                 try {
                     Gio.AppInfo.launch_default_for_uri_finish(result);
                 } catch (error) {
-                    if (!isCancelled(error) && this._enabled)
+                    if (!isCancelled(error) && cancellable === this._cancellable)
                         Main.notify(APPLICATION_NAME, 'The default file manager could not be opened.');
                 }
             }
@@ -783,7 +792,7 @@ export class KeyboardController {
         const hid = this._hid;
         try {
             const result = await operation(hid);
-            if (!this._enabled || hid !== this._hid)
+            if (hid !== this._hid)
                 return;
             const message = typeof successMessage === 'function'
                 ? successMessage(result)
@@ -792,7 +801,7 @@ export class KeyboardController {
             this._scheduleLightingSave();
             this.refreshRgbState();
         } catch {
-            if (this._enabled && hid === this._hid) {
+            if (hid === this._hid) {
                 Main.notify(
                     APPLICATION_NAME,
                     'Keyboard lighting command failed. VIA raw HID is available only over USB and requires device permission.'
@@ -832,10 +841,10 @@ export class KeyboardController {
         const hid = this._hid;
         try {
             await hid.save();
-            if (!this._enabled || hid !== this._hid || revision !== this._lightingRevision)
+            if (hid !== this._hid || revision !== this._lightingRevision)
                 return;
         } catch {
-            if (!this._enabled || hid !== this._hid || revision !== this._lightingRevision)
+            if (hid !== this._hid || revision !== this._lightingRevision)
                 return;
             Main.notify(
                 APPLICATION_NAME,
@@ -848,7 +857,7 @@ export class KeyboardController {
         const hid = this._hid;
         try {
             const state = await hid.getState();
-            if (!this._enabled || hid !== this._hid)
+            if (hid !== this._hid)
                 return;
             const values = normalizeProfileValues(this._settings.get_strv('profile-values'));
             values[index] = serializeProfile(state);
@@ -858,7 +867,7 @@ export class KeyboardController {
                 `${this._state.profileNames[index]} captured from the keyboard.`
             );
         } catch {
-            if (this._enabled && hid === this._hid) {
+            if (hid === this._hid) {
                 Main.notify(
                     APPLICATION_NAME,
                     'The lighting profile could not be captured. Connect the keyboard by USB.'
@@ -884,7 +893,7 @@ export class KeyboardController {
         const hid = this._hid;
         try {
             const state = await hid.applyState(profile);
-            if (!this._enabled || hid !== this._hid)
+            if (hid !== this._hid)
                 return;
             this._state.rgbBrightness = state.brightness;
             this._state.rgbEffect = state.effect;
@@ -897,7 +906,7 @@ export class KeyboardController {
                 `${this._state.profileNames[index]} applied, verified, and saved to the keyboard.`
             );
         } catch {
-            if (this._enabled && hid === this._hid) {
+            if (hid === this._hid) {
                 Main.notify(
                     APPLICATION_NAME,
                     'The profile was not fully applied or verified. The keyboard was not reported as saved.'
