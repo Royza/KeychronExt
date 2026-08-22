@@ -1,4 +1,4 @@
-# Programmable Keyboard Controls
+# Keychron K5 Pro Controls
 
 An independent GNOME Shell extension for the Keychron K5 Pro. It adds a panel
 menu for battery status, standard desktop actions, software display dimming and

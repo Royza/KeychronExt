@@ -24,6 +24,7 @@ import {
 } from './profile.js';
 
 const BATTERY_REFRESH_SECONDS = 120;
+const APPLICATION_NAME = 'Keychron K5 Pro Controls';
 const SOFTWARE_DIM_STEP = 16;
 const SOFTWARE_DIM_MAX = 120;
 const RGB_VALUE_MIN = 0;
@@ -691,17 +692,17 @@ export class KeyboardController {
             }
 
             if (this._enabled)
-                Main.notify('Keyboard Controls', 'No compatible media player is running.');
+                Main.notify(APPLICATION_NAME, 'No compatible media player is running.');
         } catch (error) {
             if (!isCancelled(error) && this._enabled)
-                Main.notify('Keyboard Controls', 'The media command could not be sent.');
+                Main.notify(APPLICATION_NAME, 'The media command could not be sent.');
         }
     }
 
     _changeVolume(action) {
         const sink = this._mixerControl.get_default_sink();
         if (!sink) {
-            Main.notify('Keyboard Controls', 'No default audio output is available.');
+            Main.notify(APPLICATION_NAME, 'No default audio output is available.');
             return;
         }
 
@@ -728,7 +729,7 @@ export class KeyboardController {
                     Gio.AppInfo.launch_default_for_uri_finish(result);
                 } catch (error) {
                     if (!isCancelled(error) && this._enabled)
-                        Main.notify('Keyboard Controls', 'The default file manager could not be opened.');
+                        Main.notify(APPLICATION_NAME, 'The default file manager could not be opened.');
                 }
             }
         );
@@ -738,7 +739,7 @@ export class KeyboardController {
         try {
             this._extension.openPreferences();
         } catch {
-            Main.notify('Keyboard Controls', 'Profile Preferences could not be opened.');
+            Main.notify(APPLICATION_NAME, 'Profile Preferences could not be opened.');
         }
     }
 
@@ -787,13 +788,13 @@ export class KeyboardController {
             const message = typeof successMessage === 'function'
                 ? successMessage(result)
                 : successMessage;
-            Main.notify('Keyboard Controls', message);
+            Main.notify(APPLICATION_NAME, message);
             this._scheduleLightingSave();
             this.refreshRgbState();
         } catch {
             if (this._enabled && hid === this._hid) {
                 Main.notify(
-                    'Keyboard Controls',
+                    APPLICATION_NAME,
                     'Keyboard lighting command failed. VIA raw HID is available only over USB and requires device permission.'
                 );
                 this.refreshRgbState();
@@ -837,7 +838,7 @@ export class KeyboardController {
             if (!this._enabled || hid !== this._hid || revision !== this._lightingRevision)
                 return;
             Main.notify(
-                'Keyboard Controls',
+                APPLICATION_NAME,
                 'Lighting changed, but automatic saving failed. Reconnect by USB and try another change.'
             );
         }
@@ -853,13 +854,13 @@ export class KeyboardController {
             values[index] = serializeProfile(state);
             this._settings.set_strv('profile-values', values);
             Main.notify(
-                'Keyboard Controls',
+                APPLICATION_NAME,
                 `${this._state.profileNames[index]} captured from the keyboard.`
             );
         } catch {
             if (this._enabled && hid === this._hid) {
                 Main.notify(
-                    'Keyboard Controls',
+                    APPLICATION_NAME,
                     'The lighting profile could not be captured. Connect the keyboard by USB.'
                 );
             }
@@ -876,7 +877,7 @@ export class KeyboardController {
     async applyLightingProfile(index) {
         const profile = parseProfile(this._state.profileValues[index]);
         if (!profile) {
-            Main.notify('Keyboard Controls', 'That lighting profile is empty or invalid.');
+            Main.notify(APPLICATION_NAME, 'That lighting profile is empty or invalid.');
             return;
         }
 
@@ -892,13 +893,13 @@ export class KeyboardController {
             this._state.rgbSaturation = state.saturation;
             this._syncIndicator();
             Main.notify(
-                'Keyboard Controls',
+                APPLICATION_NAME,
                 `${this._state.profileNames[index]} applied, verified, and saved to the keyboard.`
             );
         } catch {
             if (this._enabled && hid === this._hid) {
                 Main.notify(
-                    'Keyboard Controls',
+                    APPLICATION_NAME,
                     'The profile was not fully applied or verified. The keyboard was not reported as saved.'
                 );
                 this.refreshRgbState();
@@ -936,7 +937,7 @@ export class KeyboardController {
 
         if (before === this._state.softwareDim) {
             const endpoint = direction === 'up' ? 'maximum' : 'minimum';
-            Main.notify('Keyboard Controls', `Software brightness is already at ${endpoint}.`);
+            Main.notify(APPLICATION_NAME, `Software brightness is already at ${endpoint}.`);
         }
     }
 
@@ -997,7 +998,7 @@ export class KeyboardController {
             if (!down || !up)
                 this._releaseBrightnessKeys();
         } catch (error) {
-            console.error(`Keyboard Controls: brightness key setup failed: ${error.message}`);
+            console.error(`${APPLICATION_NAME}: brightness key setup failed: ${error.message}`);
             this._releaseBrightnessKeys();
         }
     }
@@ -1025,7 +1026,7 @@ export class KeyboardController {
                 global.display.ungrab_accelerator(action);
                 Main.wm.allowKeybinding(name, Shell.ActionMode.NONE);
             } catch (error) {
-                console.error(`Keyboard Controls: failed to release ${name}: ${error.message}`);
+                console.error(`${APPLICATION_NAME}: failed to release ${name}: ${error.message}`);
             }
         }
         this._brightnessAccelerators.clear();
@@ -1040,7 +1041,7 @@ export class KeyboardController {
                 try {
                     this._shellKeybindingSettings.set_strv(key, value);
                 } catch (error) {
-                    console.error(`Keyboard Controls: failed to restore ${key}: ${error.message}`);
+                    console.error(`${APPLICATION_NAME}: failed to restore ${key}: ${error.message}`);
                 }
             }
         }
