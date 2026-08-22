@@ -23,11 +23,11 @@ Extension menu handling:
 | --- | --- | --- |
 | Screen Brightness Down / Up | Enabled, endpoint-aware | `fn+F1/F2` emit real brightness keys; extension uses software dimming for responsiveness because the tested external monitor rejected effective DDC writes. |
 | App Switcher | Disabled reference | `fn+F3` already emits `Super+Tab`; GNOME owns the actual switcher behavior. |
-| Open Files | Enabled | `fn+F4` emits `Super+E`; the extension can also open the default file manager with `gio open ~`. |
-| Rewind / Play / Fast Forward | Enabled | These map to standard media actions through `playerctl`. |
-| Mute / Volume Down / Volume Up | Enabled | These map to standard PipeWire/WirePlumber actions through `wpctl`. |
-| Backlight Off / On | Enabled in wired mode | Uses VIA raw HID `rgb_matrix.brightness` and `rgb_matrix.effect` to toggle between off and the previous lighting state; physical `fn+Light key` is confirmed to toggle firmware backlight. |
-| RGB brightness, effect, speed, hue, saturation, and save | Enabled in wired mode | Uses VIA raw HID `rgb_matrix` values that this K5 Pro firmware handles directly. Direct effect selection lives in a separate `RGB Effects` submenu because nested submenus do not display reliably in GNOME Shell popup menus. Brightness, speed, hue, and saturation are enabled only while an RGB effect is active; endpoint-sensitive rows are disabled at their reported minimum or maximum values. |
+| Open Files | Enabled | `fn+F4` emits `Super+E`; the extension can also open the default file manager through Gio. |
+| Rewind / Play / Fast Forward | Enabled | These call compatible media players through MPRIS D-Bus. |
+| Mute / Volume Down / Volume Up | Enabled | These use GNOME Shell's Gvc mixer API. |
+| Backlight Off / On | Enabled in wired mode | Uses native GJS/Gio raw HID with VIA `rgb_matrix.brightness` and `rgb_matrix.effect` to toggle between off and the previous lighting state; physical `fn+Light key` is confirmed to toggle firmware backlight. |
+| RGB brightness, effect, speed, hue, saturation, and profiles | Enabled in wired mode | Uses native GJS/Gio raw HID for VIA `rgb_matrix` values that this K5 Pro firmware handles directly. Changes are saved automatically after a short quiet period. Direct effect selection includes the firmware's Per-Key RGB and Mix RGB modes. Global speed and color controls are disabled for those two vendor-specific modes. |
 | Lock Backlight Effect | Disabled reference | This remains a physical firmware shortcut and is not exposed as a VIA command. |
 | Bluetooth profile, pairing, battery-check, and auto-sleep shortcuts | Disabled reference | These are keyboard-firmware actions, not OS-triggerable commands. |
 | Clear Software Dimmer | Enabled only while dimmed | Removes the software dimmer immediately without requiring log out/in. |
@@ -60,5 +60,5 @@ Keyboard backlight findings:
 - `/dev/hidraw2` is the K5 Pro VIA raw-HID interface in wired mode (`Usage Page ff60`).
 - VIA lighting probe results: `rgb_matrix.brightness`, `rgb_matrix.effect`, `rgb_matrix.effect_speed`, and `rgb_matrix.color` are handled; legacy `backlight`, `rgblight`, and `led_matrix` channels are unhandled.
 - First-load quirk: the keyboard may report `rgb_matrix.effect > 0` while `rgb_matrix.brightness == 0`. The extension treats either `effect == 0` or `brightness == 0` as off and restores both values when toggling on.
-- Keychron's QMK firmware maps `fn+F5/F6` on the RGB Windows layer to RGB matrix brightness down/up. The extension now exposes brightness, effects, speed, hue, saturation, and save through VIA rather than treating them as reference-only firmware shortcuts.
+- Keychron's QMK firmware maps `fn+F5/F6` on the RGB Windows layer to RGB matrix brightness down/up. The extension exposes brightness, effects, speed, hue and saturation through VIA rather than treating them as reference-only firmware shortcuts. Changes are saved automatically.
 - Direct testing showed that effect selection reads back immediately while lighting is off. Brightness, speed, hue, and saturation read back correctly once an RGB effect is active, so the extension disables those rows while the effect is `None`.

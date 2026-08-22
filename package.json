@@ -1,0 +1,12 @@
+{
+  "name": "programmable-keyboard-controls",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint extension.js controller.js hid.js prefs.js profile.js",
+    "test": "node tests/profile.test.mjs"
+  },
+  "devDependencies": {
+    "eslint": "10.9.0"
+  }
+}

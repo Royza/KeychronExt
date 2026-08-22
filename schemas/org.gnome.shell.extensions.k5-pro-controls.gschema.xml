@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.k5-pro-controls" path="/org/gnome/shell/extensions/k5-pro-controls/">
+    <key name="profile-names" type="as">
+      <default>['Default', 'Profile 2', 'Profile 3', 'Profile 4', 'Profile 5', 'Profile 6', 'Profile 7', 'Profile 8', 'Profile 9', 'Profile 10']</default>
+      <summary>Lighting profile names</summary>
+    </key>
+    <key name="profile-values" type="as">
+      <default>['', '', '', '', '', '', '', '', '', '']</default>
+      <summary>Serialized lighting profiles</summary>
+    </key>
+  </schema>
+</schemalist>

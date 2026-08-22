@@ -1,3 +1,6 @@
 *.shell-extension.zip
 *.backup.*
 __pycache__/
+dist/
+node_modules/
+schemas/gschemas.compiled

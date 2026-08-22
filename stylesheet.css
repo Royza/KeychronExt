@@ -1,20 +1,26 @@
-.keychron-panel-icon {
-  icon-size: 16px;
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.keyboard-panel-icon {
+    icon-size: 16px;
 }
 
-.keychron-menu-title {
-  font-weight: 600;
+.keyboard-menu-title {
+    font-weight: 600;
 }
 
-.keychron-submenu-title {
-  font-weight: 500;
+.keyboard-submenu-title {
+    font-weight: 500;
 }
 
-.keychron-shortcut {
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.9em;
+.keyboard-shortcut {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.9em;
 }
 
-.keychron-danger {
-  color: #f66151;
+.keyboard-menu-row {
+    spacing: 12px;
+}
+
+.keyboard-danger {
+    color: #f66151;
 }

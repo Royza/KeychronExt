@@ -1,7 +1,8 @@
 {
-  "uuid": "keychron-k5-pro@local",
-  "name": "Keychron K5 Pro Controls",
-  "description": "Panel controls and shortcut reference for Keychron K5 Pro keyboards on GNOME.",
-  "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "version": 1
+  "uuid": "k5-pro-controls@royza.github.io",
+  "name": "Programmable Keyboard Controls",
+  "description": "Panel controls, battery status, software display dimming and wired VIA RGB controls for a supported keyboard.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.k5-pro-controls",
+  "url": "https://github.com/Royza/Keychron-K5-Pro-Gnome-Ext"
 }

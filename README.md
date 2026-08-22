@@ -1,86 +1,143 @@
-# Keychron K5 Pro Controls
+# Programmable Keyboard Controls
 
-A GNOME Shell extension for Bazzite GNOME that shows Keychron K5 Pro keyboard functions in the top panel.
+An independent GNOME Shell extension for the Keychron K5 Pro. It adds a panel
+menu for battery status, standard desktop actions, software display dimming and
+wired VIA RGB Matrix controls.
 
-Shortcut source: <https://www.keychron.com/blogs/news/k5-key-combinations>
+This project is unofficial and is not affiliated with or endorsed by Keychron.
+No Keychron logos, artwork or firmware are included. The product name is used
+only to identify compatible hardware.
 
-Most `fn` combinations on Keychron keyboards are handled inside the keyboard firmware. GNOME cannot synthesize those private `fn` key presses directly, so this extension:
+## Compatibility
 
-- Lists the non-Mac K5 Pro shortcuts from the Keychron key-combinations reference.
-- Runs GNOME/OS equivalents for actions GNOME can control, such as media keys, volume, and best-effort screen brightness.
-- Greys out firmware-only functions that GNOME cannot activate directly, while keeping them visible as reference.
-- Shows the keyboard battery percentage in the menu title when the keyboard is visible through UPower.
-- Requires confirmation before showing the reset-keyboard shortcut.
+- GNOME Shell 50
+- Keychron K5 Pro USB vendor/product ID `3434:0250`
+- Primary tested variant: K5 Pro ANSI RGB
+- A standard GNOME user session on Linux
 
-## Keyboard Backlight
+GNOME Shell 50.3 on Fedora/Bazzite is the tested release. Older GNOME releases
+are not claimed because they have not been tested against this version.
 
-The Keychron K5 Pro keyboard backlight and RGB effects are handled by keyboard firmware in this setup. GNOME exposes a keyboard-backlight D-Bus interface, but it does not provide working brightness properties for this Keychron and no Keychron backlight LED appears under `/sys/class/leds`.
+## Features
 
-The extension keeps firmware-only backlight shortcuts as reference items when they are not exposed through VIA. The direct RGB controls use the K5 Pro's VIA raw-HID lighting interface when the keyboard is connected over USB.
+- Shows Bluetooth connection and battery percentage when BlueZ exposes the
+  keyboard's `Battery1` interface.
+- Controls VIA RGB Matrix brightness, effect, speed, hue and saturation over
+  the keyboard's raw-HID interface while connected by USB.
+- Automatically batches and saves lighting changes to the keyboard after 750 ms
+  of inactivity, avoiding a persistent-memory write for every rapid adjustment.
+- Stores ten local lighting profiles. Profiles can be captured and applied from
+  the panel menu. The menu's `Manage Profiles…` action opens Preferences for
+  renaming and clearing profiles.
+- Shows on-demand model, connection, USB ID, RGB capability, VIA protocol and
+  optional firmware-version information.
+- Sends previous, play/pause and next commands to MPRIS media players.
+- Controls the default GNOME audio output through GNOME's mixer API.
+- Opens the default file manager without assuming a particular application.
+- Provides a software dimmer for the primary display and handles the keyboard's
+  standard screen-brightness keys while enabled.
+- Lists firmware-only shortcuts as disabled reference rows.
 
-On this K5 Pro, `fn+Light key` toggles the keyboard backlight off/on in firmware. The extension's `Backlight Off / On` row uses the keyboard's VIA raw-HID interface in wired mode and toggles RGB matrix state by restoring both brightness and effect mode. This matters because the keyboard can report a nonzero effect mode while brightness is `0`, especially after first load or a manual firmware toggle.
+The keyboard's Bluetooth profile selection, pairing, sleep configuration and
+reset combinations are implemented by its firmware. GNOME cannot synthesize
+those private `fn` combinations, so the extension does not pretend to run them.
 
-The extension can also control these VIA RGB Matrix values directly:
+## Runtime requirements
 
-- Brightness down/up
-- Previous/next effect
-- Direct effect selection in the separate `RGB Effects` submenu
-- Effect speed down/up
-- Hue down/up
-- Saturation down/up
-- Save lighting settings
+The extension has no Python, shell-script, `playerctl`, `wpctl`, `busctl` or
+`gio` command dependency. It uses APIs already present in GNOME Shell 50:
 
-`Save Lighting Settings` persists the current RGB matrix settings in keyboard firmware and does not visibly change the lighting when clicked. When the current effect is `None`, the keyboard treats lighting as off. In that state the menu keeps toggle/effect selection available and disables brightness, speed, hue, and saturation rows until a lighting effect is active. The menu also disables endpoint-sensitive rows when the keyboard reports that brightness, effect, speed, or saturation is already at its minimum or maximum. The firmware-only `Lock Backlight Effect` shortcut remains a disabled reference item.
+- Gio and BlueZ D-Bus for Bluetooth state and battery data
+- MPRIS D-Bus for media controls
+- GNOME's Gvc mixer API for volume
+- Gio application launching for the file manager
+- Gio file streams for VIA raw HID
 
-## Install
+BlueZ is optional: without it, Bluetooth battery status is unavailable but the
+extension remains usable. An MPRIS-compatible player is required only for the
+three media menu actions.
 
-For a normal install or after rebuilding Bazzite, clone/copy this project folder and run:
+## Wired RGB and device permissions
+
+RGB controls work only in USB mode. Detection verifies USB ID `3434:0250` plus
+the VIA usage descriptor while scanning `/sys/class/hidraw`. Bluetooth detection
+uses BlueZ's matching modalias. Neither path uses a Bluetooth address, USB serial
+number or machine-specific device path.
+
+The logged-in user must have read/write permission for the matching `/dev/hidraw*`
+device. Distribution policies differ; if RGB controls stay disabled, inspect:
 
 ```bash
-cd KeychronExt
+ls -l /dev/input/by-id/*Keychron*K5*Pro*hidraw /dev/hidraw*
+```
+
+Do not make every HID device globally writable. Add a narrowly scoped udev rule
+for vendor `3434`, product `0250` and the VIA interface according to your
+distribution's policy.
+
+## Installation
+
+Once approved and published, install the extension from
+[extensions.gnome.org](https://extensions.gnome.org/).
+
+For a local development install from this checkout:
+
+```bash
 ./install.sh
+gnome-extensions enable k5-pro-controls@royza.github.io
 ```
 
-The script installs the required extension files to:
+Use `./install.sh --symlink` while developing. GNOME Shell caches extension
+modules; after changing JavaScript for an already-loaded UUID on Wayland, log
+out and back in before treating a test as conclusive.
+
+To build the same minimal package intended for extensions.gnome.org:
 
 ```bash
-~/.local/share/gnome-shell/extensions/keychron-k5-pro@local
+mkdir -p dist
+gnome-extensions pack --force --out-dir=dist \
+  --extra-source=controller.js --extra-source=hid.js \
+  --extra-source=profile.js .
 ```
 
-It also installs `tools/keychron-via-light.py`, keeps `fn+F1/F2` assigned to this extension's software brightness handler, and tries to enable the extension.
-
-If GNOME has not discovered the extension yet, log out and back in, then enable it:
+Run the profile tests and JavaScript checks with:
 
 ```bash
-gnome-extensions enable keychron-k5-pro@local
+npm ci
+npm test
+npm run lint
 ```
 
-For development, install the current checkout as a symlink:
+## Brightness behavior
 
-```bash
-./install.sh --symlink
-```
+The tested keyboard emits standard `XF86MonBrightnessDown` and
+`XF86MonBrightnessUp` keys. The extension temporarily clears GNOME Shell's two
+built-in brightness bindings, grabs those keys for its software dimmer, and
+restores the exact values it found when disabled. The installer does not modify
+the bindings.
 
-## Development Install
+The dimmer covers only the primary monitor's window layer, leaving Shell UI
+visible. `Clear Software Dimmer` removes it immediately. This changes perceived
+brightness, not monitor hardware brightness or power use.
 
-Manual symlink install:
+## Troubleshooting
 
-```bash
-rm -rf ~/.local/share/gnome-shell/extensions/keychron-k5-pro@local
-ln -sfn "$PWD" ~/.local/share/gnome-shell/extensions/keychron-k5-pro@local
-```
+- **No panel indicator:** check `gnome-extensions info
+  k5-pro-controls@royza.github.io` and the GNOME Shell journal.
+- **RGB rows disabled:** connect by USB and check raw-HID permissions.
+- **No battery percentage:** verify the keyboard is connected over Bluetooth
+  and that BlueZ exposes `org.bluez.Battery1`.
+- **Media action reports no player:** start an MPRIS-compatible media player.
+- **Updated code does not load:** log out and back in to clear GNOME Shell's
+  module cache.
 
-## Screen Brightness
+Development observations and hardware diagnostic tools live in [`docs/`](docs/)
+and [`tools/`](tools/). They are not part of the EGO upload ZIP.
 
-The extension uses a GNOME software dimmer over windows on the primary monitor for responsive brightness changes. Hardware DDC/CI brightness was tested on an external monitor, but that setup reported successful writes without changing the monitor value, so the extension skips that slow failing path.
+## Development and support
 
-The dimmer is deliberately kept below the GNOME Shell UI so the panel and system controls remain visible. If needed, use `Clear Software Dimmer` in the extension's Maintenance section to remove the dimmer immediately.
+Report bugs at <https://github.com/Royza/Keychron-K5-Pro-Gnome-Ext/issues>. Useful reports
+include the GNOME Shell version, connection mode, whether the panel menu works,
+and relevant non-sensitive journal messages.
 
-GNOME Shell owns the hardware brightness keys by default. The extension clears Shell's built-in `XF86MonBrightnessDown/Up` bindings while it is enabled, grabs those keys for the software dimmer, and restores the original bindings when disabled. GNOME caches extension JavaScript modules, so changes to that key-grab code may require logging out and back in before they affect an already-running session.
-
-On this Bazzite setup, `fn+F1/F2` already emit Linux screen-brightness keys:
-
-- `fn+F1`: `KEY_BRIGHTNESSDOWN`, scan `c0070`
-- `fn+F2`: `KEY_BRIGHTNESSUP`, scan `c006f`
-
-If brightness still appears to do nothing, see [docs/keychron-k5-pro-bazzite-audit.md](docs/keychron-k5-pro-bazzite-audit.md). The likely cause is display-shell behavior rather than the keyboard mapping.
+The extension is licensed under `GPL-3.0-or-later`. See [LICENSE](LICENSE).
